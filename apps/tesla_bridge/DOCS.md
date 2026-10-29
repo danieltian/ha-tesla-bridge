@@ -22,6 +22,16 @@ options and starts it during setup.
   internal Home Assistant network, keeps the last value of every field across
   restarts, and counts streamed values (Tesla bills per value).
 
+## Web UI
+
+**Open Web UI** on the app's page (or turn on **Show in sidebar**) shows what
+the app is doing: the DuckDNS name, certificate, public key, streaming server,
+router port check and cars.
+
+If you closed the Tesla Bridge setup before it finished, click **Continue
+setup** there. The setup starts again with your earlier answers filled in.
+The page is only reachable through Home Assistant.
+
 ## Router
 
 Forward these TCP ports from the internet to your Home Assistant host:

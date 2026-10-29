@@ -166,16 +166,29 @@ def fields_for_preset(
     return result
 
 
+# Share of intervals in which a moving car changes these by at least their
+# minimum delta (15 m, 3 speed units, 10 degrees) in mixed town driving.
+_MOVING = {"Location": 0.9, "VehicleSpeed": 0.6, "GpsHeading": 0.4}
+# Values that drift (battery, range, temperatures, energy) change by their
+# minimum delta about every other minute; discrete ones (locks, doors, gear,
+# seat heaters, media) a couple of times an hour.
+_DRIFTING_PER_HOUR = 30.0
+_DISCRETE_PER_HOUR = 2.0
+
+
 def estimate_signals_per_hour(preset: TelemetryPreset | str) -> int:
-    """Rough upper bound of signals per active (driving/charging) hour."""
+    """Typical signals per hour while a car is driving or charging.
+
+    Only changed values are sent, so a field's interval is a cap, not a rate:
+    the door locks may be sent every second but change a few times a day.
+    """
     total = 0.0
     for name, entry in fields_for_preset(preset).items():
-        del name
-        # Assume a busy field changes every interval, capped at once a minute
-        # for slow-moving values when a minimum delta applies.
-        interval = entry["interval_seconds"]
-        per_hour = 3600 / interval
-        if "minimum_delta" in entry:
-            per_hour = min(per_hour, 360)
-        total += min(per_hour, 3600)
+        per_interval = 3600 / entry["interval_seconds"]
+        if name in _MOVING:
+            total += per_interval * _MOVING[name]
+        elif "minimum_delta" in entry:
+            total += min(per_interval, _DRIFTING_PER_HOUR)
+        else:
+            total += min(per_interval, _DISCRETE_PER_HOUR)
     return int(total)

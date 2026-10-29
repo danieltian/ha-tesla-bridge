@@ -1,5 +1,5 @@
 name: Tesla Bridge
-version: "0.1.0"
+version: "0.2.0"
 slug: tesla_bridge
 description: >-
   Self-hosted Tesla Fleet Telemetry server, Tesla public-key host and
@@ -23,6 +23,10 @@ ports_description:
   443/tcp: Tesla public key over HTTPS (forward from the internet)
   8443/tcp: Vehicle Fleet Telemetry stream (forward from the internet)
 watchdog: http://[HOST]:[PORT:8099]/api/v1/health
+ingress: true
+ingress_port: 8098
+panel_icon: mdi:car-electric
+panel_title: Tesla Bridge
 options:
   duckdns_domain: ""
   duckdns_token: ""

@@ -28,6 +28,8 @@ KEY_SERVER_PORT = int(os.environ.get("TESLA_BRIDGE_KEY_PORT", "443"))
 TELEMETRY_PORT = int(os.environ.get("TESLA_BRIDGE_TELEMETRY_PORT", "8443"))
 TELEMETRY_STATUS_PORT = 8080
 API_PORT = int(os.environ.get("TESLA_BRIDGE_API_PORT", "8099"))
+# The app's page in Home Assistant, reached only through the ingress proxy.
+WEBUI_PORT = int(os.environ.get("TESLA_BRIDGE_WEBUI_PORT", "8098"))
 ZMQ_ADDR = "tcp://127.0.0.1:5284"
 ZMQ_NAMESPACE = "tb"
 

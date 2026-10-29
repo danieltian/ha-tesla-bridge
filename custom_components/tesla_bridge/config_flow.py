@@ -118,6 +118,16 @@ CONF_TOKEN = "token"
 PASSWORD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
 
+def preset_estimates() -> dict[str, str]:
+    """Placeholders: typical values per hour, and USD a month at an hour a day."""
+    estimates: dict[str, str] = {}
+    for preset in TelemetryPreset:
+        per_hour = estimate_signals_per_hour(preset)
+        estimates[f"{preset.value}_signals"] = f"{per_hour:,}"
+        estimates[f"{preset.value}_month"] = f"{per_hour * 30 / SIGNALS_PER_DOLLAR:.2f}"
+    return estimates
+
+
 class TeslaBridgeConfigFlow(
     config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN
 ):
@@ -694,16 +704,6 @@ class TeslaBridgeConfigFlow(
         if user_input is not None:
             self._preset = user_input[CONF_PRESET]
             return await self.async_step_push()
-        estimates = {
-            f"{p.value}_signals": f"{estimate_signals_per_hour(p):,}"
-            for p in TelemetryPreset
-        }
-        estimates.update(
-            {
-                f"{p.value}_cost": f"{estimate_signals_per_hour(p) / SIGNALS_PER_DOLLAR:.3f}"
-                for p in TelemetryPreset
-            }
-        )
         return self.async_show_form(
             step_id="telemetry",
             data_schema=vol.Schema(
@@ -717,7 +717,7 @@ class TeslaBridgeConfigFlow(
                     )
                 }
             ),
-            description_placeholders=estimates,
+            description_placeholders=preset_estimates(),
         )
 
     async def async_step_push(
@@ -1156,4 +1156,8 @@ class TeslaBridgeOptionsFlow(OptionsFlowWithReload):
                 ),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            description_placeholders=preset_estimates(),
+        )

@@ -66,6 +66,10 @@ certificate for it, and serves your Tesla public key. The **integration**
       their entity IDs and history.
 3. Each car starts streaming the next time it wakes up.
 
+If you close the setup before it finishes, start it again from **Settings →
+Apps → Tesla Bridge → Open Web UI → Continue setup** (or add the integration
+again). The app keeps your earlier answers, so they're filled in.
+
 ## Without the Supervisor
 
 On Home Assistant Container or Core installs, build and run the app yourself on
@@ -92,7 +96,10 @@ address, port 8099, and the `api_token` from `tesla-bridge-data/state.json`.
 Tesla bills Fleet API use, with a $10 monthly credit per account. Streaming
 costs about $1 per 150,000 values. Parked, sleeping cars send nothing, and the
 default *Standard* preset sends each value only when it changes, at most once
-per interval. Each car gets a **Streaming cost this month** sensor. Energy-site
+per interval. A car that drives or charges about an hour a day typically uses
+$0.20–0.30 a month on *Essential* or *Standard*, and about $1.50 on *Everything*
+(location and speed every second). Each car gets a **Streaming cost this month**
+sensor. Energy-site
 API calls are free. The integration never polls a sleeping car.
 
 ## Development

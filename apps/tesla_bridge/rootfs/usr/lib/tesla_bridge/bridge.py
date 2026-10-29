@@ -26,6 +26,7 @@ from .const import (
     KEY_SERVER_PORT,
     PKI_DIR,
     SSL_DIR,
+    WEBUI_PORT,
     ZMQ_ADDR,
 )
 from .duckdns import DuckDNSUpdater, ipv4_session
@@ -37,6 +38,7 @@ from .selftest import SelfTest
 from .state import StateStore
 from .supervisor import send_discovery
 from .telemetry import TelemetryServer, render_config
+from .webui import create_webui_app
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,12 +61,14 @@ class Bridge:
         telemetry_config: Path = FLEET_TELEMETRY_CONFIG,
         key_port: int = KEY_SERVER_PORT,
         api_port: int = API_PORT,
+        webui_port: int = WEBUI_PORT,
         zmq_addr: str = ZMQ_ADDR,
     ) -> None:
         self.options = options
         self.state = state
         self._pki_dir = pki_dir
         self._api_port = api_port
+        self._webui_port = webui_port
         self.pki: TelemetryPki | None = None
         self.relay = Relay(state, zmq_addr)
         self.telemetry = TelemetryServer(
@@ -79,6 +83,7 @@ class Bridge:
         self._session: aiohttp.ClientSession | None = None
         self._ipv4_session: aiohttp.ClientSession | None = None
         self._api_runner: web.AppRunner | None = None
+        self._webui_runner: web.AppRunner | None = None
         self._tasks: list[asyncio.Task[Any]] = []
         self.started_at = dt.datetime.now(dt.UTC)
 
@@ -93,6 +98,12 @@ class Bridge:
         await self._api_runner.setup()
         await web.TCPSite(self._api_runner, "0.0.0.0", self._api_port).start()
         _LOGGER.info("Integration API listening on port %s", self._api_port)
+
+        self._webui_runner = web.AppRunner(
+            create_webui_app(self.status), access_log=None
+        )
+        await self._webui_runner.setup()
+        await web.TCPSite(self._webui_runner, "0.0.0.0", self._webui_port).start()
 
         domain = self.options.domain
         if domain:
@@ -127,8 +138,9 @@ class Bridge:
         await asyncio.gather(*self._tasks, return_exceptions=True)
         await self.telemetry.stop()
         await self.key_server.stop()
-        if self._api_runner is not None:
-            await self._api_runner.cleanup()
+        for runner in (self._api_runner, self._webui_runner):
+            if runner is not None:
+                await runner.cleanup()
         for session in (self._session, self._ipv4_session):
             if session is not None:
                 await session.close()

@@ -55,7 +55,7 @@
       },
       "telemetry": {
         "title": "How much should the cars stream?",
-        "description": "Each streamed value is billed by Tesla (about 150,000 per $1, with a $10 monthly credit per account). While a car is driving or charging, roughly:\n\n- Essential: up to {essential_signals} values/hour (≈ ${essential_cost}/h)\n- Standard: up to {standard_signals} values/hour (≈ ${standard_cost}/h)\n- Everything: up to {everything_signals} values/hour (≈ ${everything_cost}/h)\n\nParked, asleep cars send nothing. You can change this later.",
+        "description": "Tesla bills each streamed value: about $1 per 150,000, with a $10 monthly credit per account. Cars only send values that changed, and only while awake; parked, asleep cars send nothing. While driving or charging, a car typically sends:\n\n- **Essential**: about {essential_signals} values an hour (≈ ${essential_month} a month for a car that drives or charges an hour a day)\n- **Standard**: about {standard_signals} values an hour (≈ ${standard_month} a month)\n- **Everything**: about {everything_signals} values an hour (≈ ${everything_month} a month)\n\nEssential and Standard send location and speed at most every 10 seconds; Everything sends them every second. Each car gets a *Streaming cost this month* sensor. You can change this later under **Configure**.",
         "data": {
           "telemetry_preset": "Streaming preset"
         }
@@ -176,7 +176,8 @@
           "telemetry_preset": "Streaming preset",
           "upnp": "Open router ports automatically (UPnP)",
           "powerwall_interval": "Local Powerwall update interval"
-        }
+        },
+        "description": "Tesla bills each streamed value: about $1 per 150,000, with a $10 monthly credit per account. Cars only send values that changed, and only while awake; parked, asleep cars send nothing. While driving or charging, a car typically sends:\n\n- **Essential**: about {essential_signals} values an hour (≈ ${essential_month} a month for a car that drives or charges an hour a day)\n- **Standard**: about {standard_signals} values an hour (≈ ${standard_month} a month)\n- **Everything**: about {everything_signals} values an hour (≈ ${everything_month} a month)\n\nEssential and Standard send location and speed at most every 10 seconds; Everything sends them every second. Each car gets a *Streaming cost this month* sensor."
       }
     }
   },

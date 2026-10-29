@@ -59,6 +59,15 @@ def test_presets_are_nested_and_sane() -> None:
     )
 
 
+def test_estimates_are_typical_not_worst_case() -> None:
+    # Only changed values are sent: an hour of driving with location and speed
+    # every 10 s is about a thousand values, not tens of thousands.
+    assert 800 < estimate_signals_per_hour(TelemetryPreset.ESSENTIAL) < 2_000
+    assert 1_000 < estimate_signals_per_hour(TelemetryPreset.STANDARD) < 2_500
+    # Every second for location, heading and speed dominates "everything".
+    assert 5_000 < estimate_signals_per_hour(TelemetryPreset.EVERYTHING) < 10_000
+
+
 def test_overrides() -> None:
     fields = fields_for_preset(
         "essential", {"Location": 30, "Odometer": None, "InsideTemp": 0}
