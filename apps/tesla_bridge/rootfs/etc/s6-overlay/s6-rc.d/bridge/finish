@@ -1,0 +1,9 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# Take the container down on an unexpected exit so the Supervisor watchdog
+# restarts the app cleanly instead of s6 respawning a half-configured process.
+if [[ "${1}" -ne 0 ]] && [[ "${1}" -ne 256 ]]; then
+  bashio::log.warning "Tesla Bridge exited with code ${1}"
+  echo "${1}" > /run/s6-linux-init-container-results/exitcode
+  exec /run/s6/basedir/bin/halt
+fi

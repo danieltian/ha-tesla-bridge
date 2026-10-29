@@ -1,0 +1,7 @@
+pytest-homeassistant-custom-component==0.13.375
+tesla-fleet-api==1.17.3
+tesla-powerwall==0.5.3
+async-upnp-client
+syrupy
+pyzmq
+ruff

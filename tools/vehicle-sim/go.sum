@@ -1,0 +1,10 @@
+github.com/google/flatbuffers v23.3.3+incompatible h1:5PJI/WbJkaMTvpGxsHVKG/LurN/KnWXNyGpwSCDgen0=
+github.com/google/flatbuffers v23.3.3+incompatible/go.mod h1:1AeVuKshWv4vARoZatz6mlQ0JxURH0Kv5+zNeJKJCa8=
+github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
+github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
+github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
+github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/teslamotors/fleet-telemetry v0.9.5 h1:JOHVTJfNO0lwufVlDLrdrtP6OdUf7Zl98PxOGj6esuo=
+github.com/teslamotors/fleet-telemetry v0.9.5/go.mod h1:G4m4NXrSY1nsbrhqper1l4iS+1mnZ+D99Gc0Bs2NBPk=
+google.golang.org/protobuf v1.36.1 h1:yBPeRvTftaleIgM3PZ/WBIZ7XM/eEYAaEyCwvyjq/gk=
+google.golang.org/protobuf v1.36.1/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=

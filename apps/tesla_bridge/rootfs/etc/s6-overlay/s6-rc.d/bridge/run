@@ -1,0 +1,6 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+bashio::log.info "Starting Tesla Bridge"
+export PYTHONPATH=/usr/lib
+export PYTHONUNBUFFERED=1
+exec python3 -m tesla_bridge

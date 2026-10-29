@@ -1,0 +1,38 @@
+name: Tesla Bridge
+version: "0.1.0"
+slug: tesla_bridge
+description: >-
+  Self-hosted Tesla Fleet Telemetry server, Tesla public-key host and
+  DuckDNS/Let's Encrypt helper for the Tesla Bridge integration.
+url: https://github.com/danieltian/ha-tesla-bridge
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: services
+boot: auto
+discovery:
+  - tesla_bridge
+map:
+  - type: ssl
+    read_only: true
+ports:
+  443/tcp: 443
+  8443/tcp: 8443
+ports_description:
+  443/tcp: Tesla public key over HTTPS (forward from the internet)
+  8443/tcp: Vehicle Fleet Telemetry stream (forward from the internet)
+watchdog: http://[HOST]:[PORT:8099]/api/v1/health
+options:
+  duckdns_domain: ""
+  duckdns_token: ""
+  lets_encrypt_accept_terms: false
+schema:
+  duckdns_domain: str?
+  duckdns_token: password?
+  lets_encrypt_accept_terms: bool
+  lets_encrypt_email: email?
+  lets_encrypt_staging: bool?
+  external_telemetry_port: port?
+  log_level: list(debug|info|warning|error)?
+  dev_extra_vehicle_ca: str?

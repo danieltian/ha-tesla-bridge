@@ -1,0 +1,27 @@
+configuration:
+  duckdns_domain:
+    name: DuckDNS name
+    description: For example myhome or myhome.duckdns.org.
+  duckdns_token:
+    name: DuckDNS token
+    description: Shown at the top of your page on duckdns.org.
+  lets_encrypt_accept_terms:
+    name: Accept the Let's Encrypt terms
+    description: Required to get the certificate Tesla needs to fetch your public key.
+  lets_encrypt_email:
+    name: Let's Encrypt email
+    description: Optional contact address for certificate notices.
+  lets_encrypt_staging:
+    name: Use Let's Encrypt staging
+    description: Test certificates only; Tesla will not trust them.
+  external_telemetry_port:
+    name: External telemetry port
+    description: Only if your router forwards a port other than 8443 to this app.
+  log_level:
+    name: Log level
+  dev_extra_vehicle_ca:
+    name: Development vehicle CA
+    description: For development only. A CA file that lets a simulated vehicle connect.
+network:
+  443/tcp: Tesla public key over HTTPS (forward from the internet)
+  8443/tcp: Vehicle Fleet Telemetry stream (forward from the internet)

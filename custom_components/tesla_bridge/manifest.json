@@ -1,0 +1,32 @@
+{
+  "domain": "tesla_bridge",
+  "name": "Tesla Bridge",
+  "after_dependencies": [
+    "hassio",
+    "network",
+    "recorder",
+    "ssdp"
+  ],
+  "codeowners": [
+    "@danieltian"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "application_credentials",
+    "http"
+  ],
+  "documentation": "https://github.com/danieltian/ha-tesla-bridge",
+  "integration_type": "hub",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/danieltian/ha-tesla-bridge/issues",
+  "loggers": [
+    "tesla_fleet_api",
+    "tesla_powerwall"
+  ],
+  "requirements": [
+    "tesla-fleet-api>=1.17.3",
+    "tesla-powerwall>=0.5.3"
+  ],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

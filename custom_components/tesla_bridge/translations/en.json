@@ -1,0 +1,778 @@
+{
+  "config": {
+    "step": {
+      "hassio_confirm": {
+        "title": "Tesla Bridge app found",
+        "description": "The app `{slug}` announced itself as a Tesla Bridge server. Continue to finish setting up Tesla Bridge with it."
+      },
+      "manual_bridge": {
+        "title": "Connect to the Tesla Bridge server",
+        "description": "Home Assistant is not running on Home Assistant OS, so the app cannot be installed automatically. Run the Tesla Bridge container yourself and enter how to reach its internal API. The token is `api_token` in its `/data/state.json`.",
+        "data": {
+          "host": "Host",
+          "port": "API port",
+          "token": "API token"
+        }
+      },
+      "configure_app": {
+        "title": "Public name and certificate",
+        "description": "Cars and Tesla reach your home through a free DuckDNS name. If you don't have one yet, sign in at {duckdns}, create a subdomain and copy your token. The app keeps the name pointed at your home and gets a Let's Encrypt certificate for it automatically.",
+        "data": {
+          "duckdns_domain": "DuckDNS name",
+          "duckdns_token": "DuckDNS token",
+          "lets_encrypt_accept_terms": "I accept the Let's Encrypt Subscriber Agreement",
+          "lets_encrypt_email": "Email for certificate notices (optional)"
+        },
+        "data_description": {
+          "duckdns_domain": "For example `myhome` or `myhome.duckdns.org`."
+        }
+      },
+      "network": {
+        "title": "Open two ports on your router",
+        "description": "Forward these TCP ports from the internet to Home Assistant at **{ip}**:\n\n- public port **{key_port}** → {ip}:**{key_host_port}** (Tesla fetches your public key)\n- public port **{telemetry_port}** → {ip}:**{telemetry_host_port}** (your cars stream to it)\n\nBoth must be plain TCP forwards (no reverse proxy). If your router supports UPnP, Tesla Bridge can create and maintain them for you.\n\n{detail}",
+        "data": {
+          "upnp": "Let Tesla Bridge open the ports automatically (UPnP)"
+        }
+      },
+      "certificate_failed": {
+        "title": "No certificate yet",
+        "description": "The app could not get a Let's Encrypt certificate for your DuckDNS name:\n\n`{error}`\n\nCheck the DuckDNS name and token in the app's configuration, then submit to try again."
+      },
+      "origin": {
+        "title": "Allow your DuckDNS name in your Tesla developer app",
+        "description": "Open the [Tesla developer dashboard]({dashboard}), edit your application and make sure that:\n\n- **Allowed Origin(s)** contains `{origin}`\n- **Allowed Redirect URI(s)** contains `{redirect}`\n\nSave, then continue to sign in to Tesla. Tesla Bridge reuses the client ID, secret and key of your Tesla Fleet integration when they exist."
+      },
+      "register": {
+        "title": "Registering with Tesla",
+        "description": "Tesla could not complete the registration of `{origin}`. Tesla must be able to fetch {key_url} from the internet.\n\n{error}\n\nFix the problem and submit to try again."
+      },
+      "vehicles": {
+        "title": "Add the key to your cars",
+        "description": "These cars don't trust Tesla Bridge's key yet: **{cars}**.\n\nOn your phone, scan the code with the camera app (or open {url}). The Tesla app opens and asks you to approve the key; stay near the car with Bluetooth on. Repeat for each car (select it in the Tesla app first), then submit.",
+        "data": {
+          "skip": "Continue without these cars streaming"
+        }
+      },
+      "telemetry": {
+        "title": "How much should the cars stream?",
+        "description": "Each streamed value is billed by Tesla (about 150,000 per $1, with a $10 monthly credit per account). While a car is driving or charging, roughly:\n\n- Essential: up to {essential_signals} values/hour (≈ ${essential_cost}/h)\n- Standard: up to {standard_signals} values/hour (≈ ${standard_cost}/h)\n- Everything: up to {everything_signals} values/hour (≈ ${everything_cost}/h)\n\nParked, asleep cars send nothing. You can change this later.",
+        "data": {
+          "telemetry_preset": "Streaming preset"
+        }
+      },
+      "push_result": {
+        "title": "Streaming configured",
+        "description": "{results}\n\nEach car switches to streaming the next time it wakes up."
+      },
+      "powerwall": {
+        "title": "Fast local Powerwall updates",
+        "description": "Tesla Bridge can read your Powerwall gateway directly every few seconds (and keep working when the internet is down). Enter its local IP address and the customer password: the last 5 characters of the password on the gateway's label. Imported from the Tesla Powerwall integration: {imported}.",
+        "data": {
+          "host": "Gateway IP address",
+          "password": "Customer password",
+          "skip": "Skip; use Tesla's cloud data only"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Tesla again",
+        "description": "Tesla Bridge needs you to sign in to your Tesla account again."
+      },
+      "pick_implementation": {
+        "title": "Pick the Tesla developer app"
+      },
+      "adopt": {
+        "title": "Replace your old Tesla integrations",
+        "description": "Found: {integrations}. Tesla Bridge can take over their entities. They keep their entity IDs, names, areas and history, so dashboards, automations and the Energy dashboard keep working. The old integrations are then disabled; delete them once you're happy.",
+        "data": {
+          "adopt": "Take over their entities and disable them"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Tesla Bridge",
+        "menu_options": {
+          "reconfigure_domain": "Register the app's new DuckDNS name with Tesla",
+          "reconfigure_bridge": "Tesla Bridge server address and token",
+          "reconfigure_powerwall": "Powerwall gateway"
+        }
+      },
+      "reconfigure_domain": {
+        "title": "Register the new DuckDNS name",
+        "description": "The app now uses `{origin}` instead of `{old}`. Cars can only stream to a name registered with Tesla.\n\n1. Open the [Tesla developer dashboard]({dashboard}) and add `{origin}` to your application's **Allowed Origin(s)**.\n2. Make sure the router still forwards both ports and that {key_url} opens from the internet.\n3. Submit. Tesla Bridge registers the name and sends every car a new streaming configuration.\n\n{error}"
+      },
+      "reconfigure_bridge": {
+        "title": "Tesla Bridge server",
+        "description": "Where Home Assistant reaches the Tesla Bridge container's internal API. The token is `api_token` in its `/data/state.json`.",
+        "data": {
+          "host": "Host",
+          "port": "API port",
+          "token": "API token"
+        }
+      },
+      "reconfigure_powerwall": {
+        "title": "Powerwall gateway",
+        "description": "Change how Tesla Bridge reads your Powerwall gateway locally. The password is the last 5 characters of the password on the gateway's label.",
+        "data": {
+          "host": "Gateway IP address",
+          "password": "Customer password",
+          "skip": "Turn local updates off (use Tesla's cloud data only)"
+        }
+      }
+    },
+    "progress": {
+      "install_app": "Installing the Tesla Bridge app. This can take a few minutes the first time.",
+      "start_app": "Starting the Tesla Bridge app.",
+      "certificate": "Waiting for the Let's Encrypt certificate for {domain} (usually 1-3 minutes).",
+      "push": "Sending the signed streaming configuration to your cars."
+    },
+    "error": {
+      "invalid_domain": "Enter just your DuckDNS name, like `myhome`.",
+      "terms_required": "The certificate cannot be issued without accepting the terms.",
+      "bridge_unreachable": "The Tesla Bridge app is not reachable.",
+      "bridge_no_domain": "The Tesla Bridge server has no domain configured yet.",
+      "upnp_failed": "Your router did not accept the UPnP request ({detail}). Forward the ports manually and leave UPnP off.",
+      "cgnat": "Your router's internet address {detail} is not public (carrier-grade NAT). The internet cannot reach your home; ask your provider for a public IPv4 address.",
+      "origin_not_allowed": "Tesla says this domain is not an Allowed Origin of your developer app. Add it as described in the previous step.",
+      "register_failed": "Tesla refused the registration.",
+      "public_key_mismatch": "Tesla returned a different public key for this domain. Another key is registered; contact Tesla developer support or use a new developer app.",
+      "still_unpaired": "Some cars still don't have the key. Approve it in the Tesla app, or check the box to continue without them.",
+      "invalid_auth": "The gateway rejected the password.",
+      "powerwall_unreachable": "The gateway did not answer at that address.",
+      "invalid_email": "Enter a valid email address, or leave it empty.",
+      "app_options_rejected": "The app rejected these settings: {error}",
+      "required": "Required.",
+      "invalid_host": "That is not a valid IP address or host name."
+    },
+    "abort": {
+      "app_store_error": "The Supervisor could not provide the Tesla Bridge app: {error}",
+      "app_not_found": "The Tesla Bridge app was not found. Add {repository} to the app store and try again.",
+      "app_failed": "The Tesla Bridge app failed: {error}",
+      "already_configured": "Tesla Bridge is already set up.",
+      "already_in_progress": "Tesla Bridge setup is already in progress.",
+      "single_instance_allowed": "Tesla Bridge is already set up.",
+      "partner_auth_failed": "Tesla rejected your developer app's client ID or secret. Check them under Settings → Devices & services → Application credentials.",
+      "cannot_connect": "Tesla's Fleet API is not reachable: {error}",
+      "reauth_successful": "Signed in again.",
+      "reauth_account_mismatch": "That is a different Tesla account.",
+      "missing_credentials": "Add your Tesla developer app's client ID and secret first.",
+      "missing_configuration": "Tesla Bridge needs application credentials.",
+      "authorize_url_timeout": "Timed out generating the Tesla sign-in link.",
+      "no_url_available": "No URL is available for the Tesla sign-in redirect.",
+      "oauth_timeout": "Timed out waiting for Tesla.",
+      "oauth_failed": "Tesla sign-in failed.",
+      "oauth_unauthorized": "Tesla sign-in was not authorized.",
+      "oauth_implementation_unavailable": "The Tesla sign-in is unavailable.",
+      "app_ports_disabled": "The app's ports 443/8443 are turned off in its Network settings. Turn them on and try again.",
+      "reconfigure_successful": "Saved.",
+      "not_tesla_bridge": "This app is not a Tesla Bridge server.",
+      "bridge_unreachable": "The Tesla Bridge app is not reachable."
+    },
+    "flow_title": "{name}"
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tesla Bridge options",
+        "data": {
+          "telemetry_preset": "Streaming preset",
+          "upnp": "Open router ports automatically (UPnP)",
+          "powerwall_interval": "Local Powerwall update interval"
+        }
+      }
+    }
+  },
+  "selector": {
+    "preset": {
+      "options": {
+        "essential": "Essential (charging, locks, location, climate)",
+        "standard": "Standard (adds tires, routes, seats, media)",
+        "everything": "Everything (1-second location and speed)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery_level": {
+        "name": "Battery level"
+      },
+      "usable_battery_level": {
+        "name": "Usable battery level"
+      },
+      "charger_power": {
+        "name": "Charger power"
+      },
+      "charge_energy_added": {
+        "name": "Charge energy added"
+      },
+      "charger_voltage": {
+        "name": "Charger voltage"
+      },
+      "charger_current": {
+        "name": "Charger current"
+      },
+      "full_charge_at": {
+        "name": "Full charge"
+      },
+      "battery_range": {
+        "name": "Battery range"
+      },
+      "est_battery_range": {
+        "name": "Estimated battery range"
+      },
+      "ideal_battery_range": {
+        "name": "Ideal battery range"
+      },
+      "energy_remaining": {
+        "name": "Energy remaining"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "speed": {
+        "name": "Speed"
+      },
+      "odometer": {
+        "name": "Odometer"
+      },
+      "inside_temp": {
+        "name": "Inside temperature"
+      },
+      "outside_temp": {
+        "name": "Outside temperature"
+      },
+      "driver_temp_setting": {
+        "name": "Driver temperature setting"
+      },
+      "passenger_temp_setting": {
+        "name": "Passenger temperature setting"
+      },
+      "tpms_pressure_fl": {
+        "name": "Tire pressure front left"
+      },
+      "tpms_pressure_fr": {
+        "name": "Tire pressure front right"
+      },
+      "tpms_pressure_rl": {
+        "name": "Tire pressure rear left"
+      },
+      "tpms_pressure_rr": {
+        "name": "Tire pressure rear right"
+      },
+      "route_destination": {
+        "name": "Destination"
+      },
+      "route_arrival": {
+        "name": "Arrival"
+      },
+      "route_distance": {
+        "name": "Distance to arrival"
+      },
+      "route_energy_at_arrival": {
+        "name": "Battery at arrival"
+      },
+      "route_traffic_delay": {
+        "name": "Traffic delay"
+      },
+      "signals_today": {
+        "name": "Streamed values today"
+      },
+      "stream_cost_month": {
+        "name": "Streaming cost this month"
+      },
+      "percentage_charged": {
+        "name": "Percentage charged"
+      },
+      "solar_power": {
+        "name": "Solar power"
+      },
+      "load_power": {
+        "name": "Home power"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "energy_left": {
+        "name": "Energy left"
+      },
+      "charge_raw": {
+        "name": "Gateway charge (raw)"
+      },
+      "grid_imported": {
+        "name": "Grid imported"
+      },
+      "grid_exported": {
+        "name": "Grid exported"
+      },
+      "solar_generated": {
+        "name": "Solar generated"
+      },
+      "battery_discharged": {
+        "name": "Battery discharged"
+      },
+      "battery_charged": {
+        "name": "Battery charged"
+      },
+      "home_consumed": {
+        "name": "Home consumed"
+      },
+      "grid_voltage": {
+        "name": "Grid voltage"
+      },
+      "battery_capacity": {
+        "name": "Capacity"
+      },
+      "battery_energy_remaining": {
+        "name": "Energy remaining"
+      },
+      "public_ip": {
+        "name": "Public IP address"
+      },
+      "certificate_expiry": {
+        "name": "Certificate expiry"
+      },
+      "connected_vehicles": {
+        "name": "Connected cars"
+      },
+      "charging_state": {
+        "name": "Charging state",
+        "state": {
+          "disconnected": "Disconnected",
+          "no_power": "No power",
+          "starting": "Starting",
+          "charging": "Charging",
+          "complete": "Complete",
+          "stopped": "Stopped"
+        }
+      },
+      "charge_cable": {
+        "name": "Charge cable",
+        "state": {
+          "iec": "IEC",
+          "sae": "SAE",
+          "gb_ac": "GB AC",
+          "gb_dc": "GB DC"
+        }
+      },
+      "fast_charger_type": {
+        "name": "Fast charger type",
+        "state": {
+          "supercharger": "Supercharger",
+          "chademo": "CHAdeMO",
+          "gb": "GB",
+          "ac_single_wire_can": "AC single wire CAN",
+          "combo": "CCS",
+          "mc_single_wire_can": "MC single wire CAN",
+          "other": "Other"
+        }
+      },
+      "shift_state": {
+        "name": "Shift state",
+        "state": {
+          "p": "Park",
+          "r": "Reverse",
+          "n": "Neutral",
+          "d": "Drive"
+        }
+      },
+      "sentry_state": {
+        "name": "Sentry state",
+        "state": {
+          "off": "Off",
+          "idle": "Idle",
+          "armed": "Armed",
+          "aware": "Aware",
+          "panic": "Panic",
+          "quiet": "Quiet"
+        }
+      },
+      "grid_status": {
+        "name": "Grid status",
+        "state": {
+          "connected": "Connected",
+          "islanded": "Off grid",
+          "islanded_ready": "Ready to go off grid",
+          "transition_to_grid": "Reconnecting to grid",
+          "transition_to_island": "Going off grid",
+          "wait_for_user": "Waiting for user"
+        }
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Streaming"
+      },
+      "charging": {
+        "name": "Charging"
+      },
+      "charger_connected": {
+        "name": "Charger connected"
+      },
+      "charge_port_door": {
+        "name": "Charge port door"
+      },
+      "door_driver_front": {
+        "name": "Front driver door"
+      },
+      "door_passenger_front": {
+        "name": "Front passenger door"
+      },
+      "door_driver_rear": {
+        "name": "Rear driver door"
+      },
+      "door_passenger_rear": {
+        "name": "Rear passenger door"
+      },
+      "frunk": {
+        "name": "Frunk"
+      },
+      "trunk": {
+        "name": "Trunk"
+      },
+      "window_driver_front": {
+        "name": "Front driver window"
+      },
+      "window_passenger_front": {
+        "name": "Front passenger window"
+      },
+      "window_driver_rear": {
+        "name": "Rear driver window"
+      },
+      "window_passenger_rear": {
+        "name": "Rear passenger window"
+      },
+      "preconditioning": {
+        "name": "Preconditioning"
+      },
+      "scheduled_charging_pending": {
+        "name": "Scheduled charging pending"
+      },
+      "battery_heater": {
+        "name": "Battery heater"
+      },
+      "homelink_nearby": {
+        "name": "HomeLink nearby"
+      },
+      "located_at_home": {
+        "name": "At home"
+      },
+      "driver_seat_occupied": {
+        "name": "Driver seat occupied"
+      },
+      "tpms_soft_warning_fl": {
+        "name": "Tire soft warning front left"
+      },
+      "tpms_soft_warning_fr": {
+        "name": "Tire soft warning front right"
+      },
+      "tpms_soft_warning_rl": {
+        "name": "Tire soft warning rear left"
+      },
+      "tpms_soft_warning_rr": {
+        "name": "Tire soft warning rear right"
+      },
+      "tpms_hard_warning_fl": {
+        "name": "Tire hard warning front left"
+      },
+      "tpms_hard_warning_fr": {
+        "name": "Tire hard warning front right"
+      },
+      "tpms_hard_warning_rl": {
+        "name": "Tire hard warning rear left"
+      },
+      "tpms_hard_warning_rr": {
+        "name": "Tire hard warning rear right"
+      },
+      "grid_connected": {
+        "name": "Grid connected"
+      },
+      "grid_services_active": {
+        "name": "Grid services active"
+      },
+      "battery_charging": {
+        "name": "Battery charging"
+      },
+      "telemetry_server": {
+        "name": "Telemetry server"
+      },
+      "key_published": {
+        "name": "Public key published"
+      },
+      "dns_updated": {
+        "name": "DuckDNS updated"
+      },
+      "loopback": {
+        "name": "Reachable via public address"
+      },
+      "stream_connected": {
+        "name": "Stream connected"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      },
+      "route": {
+        "name": "Destination location"
+      }
+    },
+    "lock": {
+      "lock": {
+        "name": "Doors"
+      },
+      "charge_cable_lock": {
+        "name": "Charge cable lock"
+      }
+    },
+    "climate": {
+      "climate": {
+        "name": "Climate",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "off": "Normal",
+              "keep": "Keep climate on",
+              "dog": "Dog mode",
+              "camp": "Camp mode"
+            }
+          }
+        }
+      }
+    },
+    "cover": {
+      "windows": {
+        "name": "Windows"
+      },
+      "charge_port_door": {
+        "name": "Charge port door"
+      },
+      "frunk": {
+        "name": "Frunk"
+      },
+      "trunk": {
+        "name": "Trunk"
+      }
+    },
+    "switch": {
+      "charge": {
+        "name": "Charge"
+      },
+      "sentry_mode": {
+        "name": "Sentry mode"
+      },
+      "defrost": {
+        "name": "Defrost"
+      },
+      "steering_wheel_heater": {
+        "name": "Steering wheel heater"
+      },
+      "auto_steering_wheel_heat": {
+        "name": "Auto steering wheel heat"
+      },
+      "auto_seat_climate_left": {
+        "name": "Auto seat climate left"
+      },
+      "auto_seat_climate_right": {
+        "name": "Auto seat climate right"
+      },
+      "storm_watch": {
+        "name": "Storm Watch"
+      },
+      "allow_grid_charging": {
+        "name": "Allow charging from grid"
+      }
+    },
+    "number": {
+      "charge_limit": {
+        "name": "Charge limit"
+      },
+      "charge_current": {
+        "name": "Charge current"
+      },
+      "backup_reserve": {
+        "name": "Backup reserve"
+      },
+      "off_grid_ev_reserve": {
+        "name": "Off-grid EV charging reserve"
+      }
+    },
+    "select": {
+      "seat_heater_left": {
+        "name": "Seat heater front left",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_heater_right": {
+        "name": "Seat heater front right",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_heater_rear_left": {
+        "name": "Seat heater rear left",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_heater_rear_center": {
+        "name": "Seat heater rear center",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_heater_rear_right": {
+        "name": "Seat heater rear right",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_cooler_left": {
+        "name": "Seat cooler front left",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "seat_cooler_right": {
+        "name": "Seat cooler front right",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "steering_wheel_heat_level": {
+        "name": "Steering wheel heat level",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "high": "High"
+        }
+      },
+      "cabin_overheat_protection": {
+        "name": "Cabin overheat protection",
+        "state": {
+          "off": "Off",
+          "on": "On",
+          "fan_only": "Fan only"
+        }
+      },
+      "operation_mode": {
+        "name": "Operation mode",
+        "state": {
+          "autonomous": "Time-based control",
+          "self_consumption": "Self-powered",
+          "backup": "Backup only"
+        }
+      },
+      "export_rule": {
+        "name": "Energy exports",
+        "state": {
+          "battery_ok": "Solar and Powerwall",
+          "pv_only": "Solar only",
+          "never": "Never"
+        }
+      }
+    },
+    "button": {
+      "wake": {
+        "name": "Wake up"
+      },
+      "flash_lights": {
+        "name": "Flash lights"
+      },
+      "honk": {
+        "name": "Honk"
+      },
+      "homelink": {
+        "name": "HomeLink"
+      },
+      "boombox": {
+        "name": "Boombox"
+      },
+      "push_telemetry": {
+        "name": "Resend streaming configuration"
+      }
+    },
+    "media_player": {
+      "media": {
+        "name": "Media"
+      }
+    },
+    "update": {
+      "software_update": {
+        "name": "Software update"
+      }
+    }
+  },
+  "exceptions": {
+    "wake_up_timeout": {
+      "message": "The car did not wake up in time."
+    },
+    "wake_up_failed": {
+      "message": "Waking the car failed: {message}"
+    },
+    "command_error": {
+      "message": "The command failed: {error}"
+    },
+    "command_reason": {
+      "message": "The car refused the command: {reason}"
+    },
+    "command_failed": {
+      "message": "Sending the command failed: {message}"
+    },
+    "cable_lock_auto": {
+      "message": "The charge cable locks automatically when plugged in."
+    },
+    "no_location": {
+      "message": "The car's location is not known yet."
+    }
+  },
+  "issues": {
+    "bridge_unreachable": {
+      "title": "Tesla Bridge app not reachable",
+      "description": "Home Assistant cannot reach the Tesla Bridge app ({detail}), so cars cannot stream. Make sure the app is installed and running; this clears itself once it is reachable again."
+    },
+    "powerwall_auth": {
+      "title": "Powerwall gateway rejected the password",
+      "description": "Local Powerwall updates are off because the gateway rejected the customer password. Open Tesla Bridge in Settings → Devices & services, choose **Reconfigure** from its menu (then **Powerwall gateway**, if asked) and enter the last 5 characters of the password on the gateway's label."
+    },
+    "missing_key": {
+      "title": "{name} doesn't have the Tesla Bridge key",
+      "description": "Tesla skipped {name} because the car does not trust Tesla Bridge's key yet. On your phone, open {url} near the car and approve the key in the Tesla app. Tesla Bridge checks every 10 minutes and configures streaming as soon as the key is approved."
+    },
+    "bridge_auth": {
+      "title": "Tesla Bridge app rejected Home Assistant",
+      "description": "The Tesla Bridge app no longer accepts Home Assistant's access token, usually because it was reinstalled or its data was reset. Tesla Bridge picks up the new token by itself once the app has started and announced it. If this stays for more than a few minutes, restart the Tesla Bridge app."
+    },
+    "bridge_auth_manual": {
+      "title": "Tesla Bridge server rejected Home Assistant",
+      "description": "The Tesla Bridge container no longer accepts Home Assistant's API token, usually because its data was reset. Open Tesla Bridge in Settings → Devices & services, choose **Reconfigure** → **Tesla Bridge server address and token** and enter the `api_token` from the container's `/data/state.json`."
+    },
+    "app_ports_disabled": {
+      "title": "Tesla Bridge app ports are turned off",
+      "description": "Port 443 or 8443 of the Tesla Bridge app is turned off in its Network settings, so Tesla and your cars cannot reach it (and UPnP leaves that port alone). Open Settings → Apps → Tesla Bridge → Configuration → Network, give both ports a host port and restart the app."
+    },
+    "domain_changed": {
+      "title": "Tesla Bridge app uses a new DuckDNS name",
+      "description": "The app now uses **{new}**, but Tesla Bridge is registered with Tesla for **{old}**, so your cars keep streaming to {old}. Open Tesla Bridge in Settings → Devices & services and choose **Reconfigure** → **Register the app's new DuckDNS name with Tesla**, or change the app's DuckDNS name back to {old}."
+    }
+  }
+}
