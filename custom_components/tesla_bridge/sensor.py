@@ -445,6 +445,24 @@ class EnergySensorDescription(SensorEntityDescription):
     local_fn: Callable[[LocalPowerwallData], Any] | None = None
     cloud_key: str | None = None
     cloud_fn: Callable[[Any], Any] | None = None
+    # Built from per-battery data, which a Powerwall 3 gateway does not give.
+    needs_battery_detail: bool = False
+
+
+def _energy_left(data: LocalPowerwallData) -> float | None:
+    remaining = [
+        b.energy_remaining
+        for b in data.batteries.values()
+        if b.energy_remaining is not None
+    ]
+    return round(sum(remaining) / 1000, 3) if remaining else None
+
+
+def _uses_local(site: EnergySiteData, description: EnergySensorDescription) -> bool:
+    """Whether the value comes from the gateway; otherwise Tesla's cloud is polled."""
+    if site.local is None or description.local_fn is None:
+        return False
+    return not (description.needs_battery_detail and site.local.client.restricted)
 
 
 def _meter_power(meter: str) -> Callable[[LocalPowerwallData], Any]:
@@ -523,6 +541,8 @@ ENERGY_SENSORS: tuple[EnergySensorDescription, ...] = (
     ),
     EnergySensorDescription(
         key="energy_left",
+        local_fn=_energy_left,
+        needs_battery_detail=True,
         cloud_key="energy_left",
         cloud_fn=_kw,
         device_class=SensorDeviceClass.ENERGY_STORAGE,
@@ -639,13 +659,15 @@ class EnergySensor(EnergySiteEntity[Any], SensorEntity):
         self, site: EnergySiteData, description: EnergySensorDescription
     ) -> None:
         self.entity_description = description
-        coordinator = site.local if (site.local and description.local_fn) else site.live
+        # Any entity on the cloud coordinator keeps it polling every minute.
+        self._local = _uses_local(site, description)
+        coordinator = site.local if self._local and site.local else site.live
         super().__init__(site, coordinator, description.key)
 
     @callback
     def _async_update_attrs(self) -> None:
         desc = self.entity_description
-        if self.site.local is not None and desc.local_fn is not None:
+        if self._local and self.site.local is not None and desc.local_fn is not None:
             data = self.site.local.data
             self._attr_native_value = desc.local_fn(data) if data else None
             return
@@ -836,6 +858,10 @@ USAGE_SENSORS: tuple[UsageSensorDescription, ...] = (
     UsageSensorDescription(
         key="api_cost_projected",
         value_fn=lambda s: round(s["projected"], 2),
+        attrs_fn=lambda s: {
+            "full month at this rate": f"${s['full_month']:.2f}",
+            "rate measured since": s["since"],
+        },
         native_unit_of_measurement="USD",
         device_class=SensorDeviceClass.MONETARY,
         suggested_display_precision=2,

@@ -17,6 +17,11 @@ from custom_components.tesla_bridge import (
     async_reconcile_telemetry,
 )
 from custom_components.tesla_bridge.const import DOMAIN
+from custom_components.tesla_bridge.sensor import (
+    ENERGY_SENSORS,
+    _energy_left,
+    _uses_local,
+)
 from custom_components.tesla_bridge.usage import (
     COMMANDS,
     DATA,
@@ -81,8 +86,9 @@ def _vehicle(month: str, count: int) -> MagicMock:
 async def test_summary_prices_and_projects(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
+    freezer.move_to("2026-10-01T00:00:00+00:00")
+    usage = ApiUsage(hass, "e")  # counting since the 1st
     freezer.move_to("2026-10-11T00:00:00+00:00")  # 10 of 31 days gone
-    usage = ApiUsage(hass, "e")
     usage.counts = {COMMANDS: 100, DATA: 50, WAKES: 2}
     summary = usage.summary(
         [_vehicle("2026-10", 150_000), _vehicle("2026-09", 999_999)]
@@ -91,16 +97,33 @@ async def test_summary_prices_and_projects(
     # $1 streaming + $0.10 commands + $0.10 data + $0.04 wakes
     assert summary["total"] == pytest.approx(1.24)
     assert summary["projected"] == pytest.approx(1.24 * 31 / 10)
+    assert summary["full_month"] == pytest.approx(1.24 * 31 / 10)
     assert summary["top"] == STREAMING
     assert summary["requests"] == 152
 
-    # A few hours in, the projection is spread over three days, not hours.
+    # A new month starts from zero, and a few hours in the rate is measured
+    # over at least a day.
     freezer.move_to("2026-11-01T02:00:00+00:00")
-    assert usage.summary([])["total"] == 0  # a new month starts from zero
+    assert usage.summary([])["total"] == 0
     usage.counts = {WAKES: 5}
     summary = usage.summary([])
-    assert summary["total"] == pytest.approx(0.10)
-    assert summary["projected"] == pytest.approx(0.10 * 30 / 3)
+    assert summary["full_month"] == pytest.approx(0.10 * 30)
+    assert summary["projected"] == pytest.approx(0.10 + 0.10 * (30 - 2 / 24))
+
+
+async def test_projects_from_when_counting_started(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # Installed late in October: the days before must not dilute the rate.
+    freezer.move_to("2026-10-29T12:00:00+00:00")
+    usage = ApiUsage(hass, "e")
+    freezer.move_to("2026-10-30T12:00:00+00:00")  # one day counted
+    usage.counts = {WAKES: 5}  # $0.10 in that day
+    summary = usage.summary([])
+    assert summary["since"] == "2026-10-29T12:00:00+00:00"
+    assert summary["full_month"] == pytest.approx(0.10 * 31)
+    # This month's bill: $0.10 so far, plus a day and a half more.
+    assert summary["projected"] == pytest.approx(0.10 + 0.10 * 1.5)
 
 
 async def test_counts_persist_within_the_month(
@@ -111,16 +134,47 @@ async def test_counts_persist_within_the_month(
     hass_storage[key] = {
         "version": 1,
         "key": key,
-        "data": {"month": "2026-10", "counts": {WAKES: 3}},
+        "data": {
+            "month": "2026-10",
+            "counts": {WAKES: 3},
+            "since": "2026-10-05T08:00:00+00:00",
+        },
     }
     usage = ApiUsage(hass, "e")
     await usage.async_load()
     assert usage.counts == {WAKES: 3}
+    assert usage.since.isoformat() == "2026-10-05T08:00:00+00:00"
 
+    # Saved by a version without "since": count from now (a safe, higher rate).
+    del hass_storage[key]["data"]["since"]
+    legacy = ApiUsage(hass, "e")
+    await legacy.async_load()
+    assert legacy.since.isoformat() == "2026-10-20T00:00:00+00:00"
+
+    # Counting ran last month, so it covers this whole month.
     hass_storage[key]["data"]["month"] = "2026-09"
     stale = ApiUsage(hass, "e")
     await stale.async_load()
     assert stale.counts == {}
+    assert stale.since.isoformat() == "2026-10-01T00:00:00+00:00"
+
+
+def test_energy_left_comes_from_the_gateway() -> None:
+    battery = MagicMock(energy_remaining=6_400)
+    data = MagicMock(batteries={"a": battery, "b": MagicMock(energy_remaining=6_100)})
+    assert _energy_left(data) == 12.5
+    assert _energy_left(MagicMock(batteries={})) is None
+
+    description = next(d for d in ENERGY_SENSORS if d.key == "energy_left")
+    site = MagicMock()
+    site.local.client.restricted = False
+    # Read locally: nothing keeps Tesla's cloud live status polling.
+    assert _uses_local(site, description)
+    # A Powerwall 3 gateway has no per-battery data: use the cloud.
+    site.local.client.restricted = True
+    assert not _uses_local(site, description)
+    site.local = None
+    assert not _uses_local(site, description)
 
 
 async def test_usage_sensors_follow_requests(

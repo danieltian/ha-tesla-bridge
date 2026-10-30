@@ -57,9 +57,9 @@ LABELS = {
 }
 # Warn while there is still room to act before the credit runs out.
 WARN_AT_USD = 0.8 * MONTHLY_CREDIT_USD
-# Projections from the first hours of a month swing wildly; spread the cost
-# over at least this many days.
-MIN_PROJECTION_DAYS = 3.0
+# A rate from the first hours of tracking swings wildly (one drive, or a
+# night of nothing); measure it over at least a day.
+MIN_PROJECTION_DAYS = 1.0
 SAVE_DELAY = 60
 
 _VEHICLE = r"api/1/vehicles/[^/]+"
@@ -83,6 +83,10 @@ def _month(now: dt.datetime) -> str:
     return now.date().isoformat()[:7]
 
 
+def _month_start(now: dt.datetime) -> dt.datetime:
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
 def streamed_this_month(vehicles: Iterable[VehicleData], now: dt.datetime) -> int:
     """Values the app received this month, summed over the cars (UTC months)."""
     month = _month(now)
@@ -100,14 +104,24 @@ class ApiUsage:
         self._store: Store[dict[str, Any]] = Store(
             hass, 1, f"{DOMAIN}.{entry_id}.usage"
         )
-        self.month = _month(dt_util.utcnow())
+        now = dt_util.utcnow()
+        self.month = _month(now)
         self.counts: dict[str, int] = {}
+        # When counting started this month. Projections use the rate since then,
+        # so a first, partial month is not spread over days nothing was counted.
+        self.since = now
         self._listeners: list[CALLBACK_TYPE] = []
 
     async def async_load(self) -> None:
         stored = await self._store.async_load() or {}
         if stored.get("month") == self.month:
             self.counts = {k: int(v) for k, v in (stored.get("counts") or {}).items()}
+            # Saved before "since" existed: count from now (a higher, safer rate).
+            self.since = dt_util.parse_datetime(stored.get("since") or "") or self.since
+        elif stored:
+            # Counting ran last month, so it was already on when this one began.
+            self.since = _month_start(self.since)
+        self._store.async_delay_save(self._data, SAVE_DELAY)
 
     def instrument(self, tesla: TeslaFleetApi) -> None:
         """Count every request ``tesla`` sends.
@@ -139,12 +153,16 @@ class ApiUsage:
             listener()
 
     def _roll(self) -> None:
-        month = _month(dt_util.utcnow())
-        if month != self.month:
-            self.month, self.counts = month, {}
+        now = dt_util.utcnow()
+        if _month(now) != self.month:
+            self.month, self.counts, self.since = _month(now), {}, _month_start(now)
 
     def _data(self) -> dict[str, Any]:
-        return {"month": self.month, "counts": self.counts}
+        return {
+            "month": self.month,
+            "counts": self.counts,
+            "since": self.since.isoformat(),
+        }
 
     @callback
     def async_add_listener(self, listener: CALLBACK_TYPE) -> Callable[[], None]:
@@ -152,22 +170,33 @@ class ApiUsage:
         return lambda: self._listeners.remove(listener)
 
     def summary(self, vehicles: Iterable[VehicleData]) -> dict[str, Any]:
-        """This month so far: counts, cost per category, total and projection."""
+        """This month so far: counts, costs, total and projections.
+
+        ``projected`` is this month's bill: the cost so far plus the rate since
+        counting started for the rest of the month. ``full_month`` is what a
+        whole month at that rate would cost, which matters in a first,
+        partial month.
+        """
         self._roll()
         now = dt_util.utcnow()
         counts = {category: self.counts.get(category, 0) for category in PRICES}
         counts[STREAMING] = streamed_this_month(vehicles, now)
         costs = {category: n * PRICES[category] for category, n in counts.items()}
         total = sum(costs.values())
+        start = max(self.since, _month_start(now))
+        tracked = max((now - start).total_seconds() / 86400, MIN_PROJECTION_DAYS)
+        per_day = total / tracked
         days = calendar.monthrange(now.year, now.month)[1]
-        elapsed = now - now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        elapsed_days = max(elapsed.total_seconds() / 86400, MIN_PROJECTION_DAYS)
+        month_end = _month_start(now) + dt.timedelta(days=days)
+        remaining = (month_end - now).total_seconds() / 86400
         return {
             "month": self.month,
+            "since": start.isoformat(),
             "counts": counts,
             "costs": costs,
             "total": total,
-            "projected": max(total, total * days / elapsed_days),
+            "projected": total + per_day * remaining,
+            "full_month": per_day * days,
             "top": max(costs, key=lambda c: costs[c]),
             "requests": sum(n for c, n in counts.items() if c != STREAMING),
         }

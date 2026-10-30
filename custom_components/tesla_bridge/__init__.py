@@ -623,7 +623,10 @@ def async_check_budget(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) -> No
     """Warn before Tesla Bridge's projected Fleet API cost uses up the credit."""
     data = entry.runtime_data
     summary = data.usage.summary(data.vehicles)
-    if summary["projected"] < WARN_AT_USD:
+    # A full month at the current rate also counts: in a first, partial month
+    # the bill stays small even when the next one will not.
+    projected = max(summary["projected"], summary["full_month"])
+    if projected < WARN_AT_USD:
         ir.async_delete_issue(hass, DOMAIN, "api_budget")
         return
     ir.async_create_issue(
@@ -634,7 +637,7 @@ def async_check_budget(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) -> No
         severity=ir.IssueSeverity.WARNING,
         translation_key="api_budget",
         translation_placeholders={
-            "projected": f"{summary['projected']:.2f}",
+            "projected": f"{projected:.2f}",
             "spent": f"{summary['total']:.2f}",
             "top": LABELS[summary["top"]],
         },

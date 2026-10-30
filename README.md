@@ -108,7 +108,10 @@ To keep an eye on it:
   data requests, commands and wake-ups at Tesla's prices; **Tesla API requests
   this month** counts the requests by category. Each car also has its own
   streaming cost sensor.
-- A repair appears when the month is projected to pass $8.
+- The projection uses the rate since Tesla Bridge started counting; its *full
+  month at this rate* attribute shows what a whole month would cost, which is
+  the useful number in your first, partial month.
+- A repair appears when either is projected to pass $8.
 - Your developer app's billing and usage page on developer.tesla.com is the
   authoritative number. It also includes anything else using the same developer
   app, such as the Tesla Fleet integration.

@@ -1,6 +1,6 @@
 [project]
 name = "ha-tesla-bridge"
-version = "0.3.0"
+version = "0.3.1"
 description = "Home Assistant integration and app for Tesla vehicles and Powerwall with self-hosted Fleet Telemetry streaming"
 requires-python = ">=3.14"
 license = "Apache-2.0"

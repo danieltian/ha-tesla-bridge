@@ -786,7 +786,7 @@
     },
     "api_budget": {
       "title": "Tesla API use may run past the free $10 credit",
-      "description": "At its current rate, Tesla Bridge's use of Tesla's API comes to about **${projected}** this month (${spent} so far), mostly {top}. Above $10, Tesla turns off your developer app until next month and removes your cars' streaming setups; Tesla Bridge sends them again once Tesla allows it.\n\nTo use less, open Tesla Bridge in Settings → Devices & services, choose **Configure** and pick a lighter streaming preset. Your developer app's billing and usage page on developer.tesla.com shows what Tesla actually counted, including other integrations that use the same developer app."
+      "description": "At its current rate, Tesla Bridge's use of Tesla's API comes to about **${projected}** a month (${spent} so far this month), mostly {top}. Above $10, Tesla turns off your developer app until next month and removes your cars' streaming setups; Tesla Bridge sends them again once Tesla allows it.\n\nTo use less, open Tesla Bridge in Settings → Devices & services, choose **Configure** and pick a lighter streaming preset. Your developer app's billing and usage page on developer.tesla.com shows what Tesla actually counted, including other integrations that use the same developer app."
     }
   }
 }
