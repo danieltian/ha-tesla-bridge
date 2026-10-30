@@ -82,6 +82,7 @@ from .powerwall_local import (
 )
 from .stream import StreamHub
 from .telemetry_config import TelemetryManager, TelemetryTarget, build_config
+from .usage import LABELS, WARN_AT_USD, ApiUsage
 
 PLATFORMS: Final = [
     Platform.BINARY_SENSOR,
@@ -100,6 +101,7 @@ PLATFORMS: Final = [
 
 RECONCILE_INTERVAL = dt.timedelta(hours=24)
 UNPAIRED_RETRY_INTERVAL = dt.timedelta(minutes=10)
+BUDGET_CHECK_INTERVAL = dt.timedelta(hours=1)
 # Seconds between attempts while the app rejects the token or is unusable.
 BRIDGE_RETRY = (5, 15, 60, 300)
 
@@ -171,6 +173,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) 
         energy_scope=Scope.ENERGY_DEVICE_DATA in scopes,
         vehicle_scope=Scope.VEHICLE_DEVICE_DATA in scopes,
     )
+    # Before any vehicle or site object exists: they copy the request method.
+    usage = ApiUsage(hass, entry.entry_id)
+    await usage.async_load()
+    usage.instrument(tesla)
     await tesla.get_private_key(hass.config.path(KEY_FILE))
 
     try:
@@ -298,6 +304,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) 
         energy_sites=energy_sites,
         bridge=bridge,
         telemetry=telemetry,
+        usage=usage,
     )
 
     # Keep the app in sync: which VINs to accept and which key to publish.
@@ -331,12 +338,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) 
     async def _retry_unpaired(_now: dt.datetime) -> None:
         await async_retry_unpaired(hass, entry)
 
+    @callback
+    def _check_budget(_now: dt.datetime | None = None) -> None:
+        async_check_budget(hass, entry)
+
     entry.async_on_unload(
         async_track_time_interval(hass, _periodic, RECONCILE_INTERVAL)
     )
     entry.async_on_unload(
         async_track_time_interval(hass, _retry_unpaired, UNPAIRED_RETRY_INTERVAL)
     )
+    entry.async_on_unload(
+        async_track_time_interval(hass, _check_budget, BUDGET_CHECK_INTERVAL)
+    )
+    _check_budget()
     if entry.data.get(CONF_ADOPT) and not entry.data.get(CONF_ADOPTED):
         await _async_adopt(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -603,6 +618,29 @@ def _raise_bridge_issue(hass: HomeAssistant, detail: str) -> None:
     )
 
 
+@callback
+def async_check_budget(hass: HomeAssistant, entry: TeslaBridgeConfigEntry) -> None:
+    """Warn before Tesla Bridge's projected Fleet API cost uses up the credit."""
+    data = entry.runtime_data
+    summary = data.usage.summary(data.vehicles)
+    if summary["projected"] < WARN_AT_USD:
+        ir.async_delete_issue(hass, DOMAIN, "api_budget")
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        "api_budget",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="api_budget",
+        translation_placeholders={
+            "projected": f"{summary['projected']:.2f}",
+            "spent": f"{summary['total']:.2f}",
+            "top": LABELS[summary["top"]],
+        },
+    )
+
+
 def missing_key_issue_id(vin: str) -> str:
     """Issue IDs end up in diagnostics, so they must not contain the VIN."""
     return f"missing_key_{hashlib.sha256(vin.encode()).hexdigest()[:12]}"
@@ -653,7 +691,8 @@ async def async_reconcile_telemetry(
     preset = entry.options.get(CONF_PRESET, DEFAULT_PRESET)
     for vehicle in data.vehicles:
         config = build_config(target, preset)
-        result = await data.telemetry.async_push(vehicle, config, force=force)
+        repush = force or await data.telemetry.async_config_missing(vehicle, target)
+        result = await data.telemetry.async_push(vehicle, config, force=repush)
         issue_id = missing_key_issue_id(vehicle.vin)
         if result.skipped_reason == "missing_key":
             ir.async_create_issue(

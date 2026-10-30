@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import datetime as dt
 import hashlib
 import json
 from typing import TYPE_CHECKING, Any
 
+from aiohttp import ClientError
 from tesla_fleet_api.const import Method
 from tesla_fleet_api.exceptions import TeslaFleetError
 from tesla_fleet_api.tesla.jws import sign_fleet_telemetry_config
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
     from .models import VehicleData
 
 STORE_VERSION = 1
+# How often to ask Tesla whether a car still has its streaming setup.
+VERIFY_INTERVAL = dt.timedelta(hours=20)
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +155,43 @@ class TelemetryManager:
         for vin, digest in pushed.items():
             if vin not in self.data:  # the store's own record wins
                 self.data[vin] = {"hash": digest, "ok": True}
+
+    async def async_config_missing(
+        self, vehicle: VehicleData, target: TelemetryTarget
+    ) -> bool:
+        """True if Tesla reports that the car's streaming setup is gone.
+
+        Tesla removes every car's streaming setup when it suspends a developer
+        app (over its billing limit, for example) and never restores them, so
+        a setup that was pushed once cannot be assumed to still exist. Checked
+        at most about daily, and only for cars believed to be set up. An answer
+        that cannot be read never counts as "missing", so an unexpected
+        response cannot cause a push every day.
+        """
+        state = self.vehicle_state(vehicle.vin)
+        if not (state.get("ok") and state.get("hash")):
+            return False  # not set up yet: the normal push handles it
+        checked = dt_util.parse_datetime(state.get("checked") or "")
+        if checked is not None and dt_util.utcnow() - checked < VERIFY_INTERVAL:
+            return False
+        try:
+            body = await self.async_check(vehicle)
+        except (ClientError, TimeoutError) as err:
+            LOGGER.debug("Could not check streaming for %s: %s", vehicle.name, err)
+            return False
+        if "error" in body or "config" not in body:
+            return False
+        config = body["config"]
+        missing = not config or (
+            config.get("hostname", target.hostname) != target.hostname
+            or int(config.get("port", target.port)) != target.port
+        )
+        if missing:
+            LOGGER.warning(
+                "Tesla no longer has the streaming setup for %s; sending it again",
+                vehicle.name,
+            )
+        return missing
 
     async def async_check(self, vehicle: VehicleData) -> dict[str, Any]:
         """Ask Tesla whether the car has adopted the config (``synced``)."""

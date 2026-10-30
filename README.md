@@ -94,13 +94,29 @@ address, port 8099, and the `api_token` from `tesla-bridge-data/state.json`.
 ## Cost
 
 Tesla bills Fleet API use, with a $10 monthly credit per account. Streaming
-costs about $1 per 150,000 values. Parked, sleeping cars send nothing, and the
-default *Standard* preset sends each value only when it changes, at most once
-per interval. A car that drives or charges about an hour a day typically uses
-$0.20–0.30 a month on *Essential* or *Standard*, and about $1.50 on *Everything*
-(location and speed every second). Each car gets a **Streaming cost this month**
-sensor. Energy-site
-API calls are free. The integration never polls a sleeping car.
+costs about $1 per 150,000 values, even though the cars send them straight to
+your server. Parked, sleeping cars send nothing, and the default *Standard*
+preset sends each value only when it changes, at most once per interval. A car
+that drives or charges about an hour a day typically uses $0.20–0.30 a month on
+*Essential* or *Standard*, and about $1.50 on *Everything* (location and speed
+every second). The integration never polls a sleeping car.
+
+To keep an eye on it:
+
+- **Tesla API cost this month** and **Tesla API cost projected for this month**
+  (on the *Tesla Bridge app* device) add up streaming plus Tesla Bridge's own
+  data requests, commands and wake-ups at Tesla's prices; **Tesla API requests
+  this month** counts the requests by category. Each car also has its own
+  streaming cost sensor.
+- A repair appears when the month is projected to pass $8.
+- Your developer app's billing and usage page on developer.tesla.com is the
+  authoritative number. It also includes anything else using the same developer
+  app, such as the Tesla Fleet integration.
+
+With Tesla's default billing limit of $0, going over the credit doesn't create
+a bill: Tesla turns the developer app off until the next month and removes the
+cars' streaming setups. Tesla Bridge checks each car's setup daily and sends it
+again once Tesla allows it.
 
 ## Development
 

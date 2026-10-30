@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .stream import StreamHub, VehicleStream
     from .telemetry_config import TelemetryManager
     from .upnp import UpnpPortMapper
+    from .usage import ApiUsage
 
 
 @dataclass
@@ -76,4 +77,5 @@ class TeslaBridgeData:
     energy_sites: list[EnergySiteData]
     bridge: BridgeRuntime
     telemetry: TelemetryManager
+    usage: ApiUsage
     upnp: UpnpPortMapper | None = None

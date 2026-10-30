@@ -29,7 +29,10 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.event import async_track_utc_time_change
+from homeassistant.helpers.event import (
+    async_track_time_interval,
+    async_track_utc_time_change,
+)
 from homeassistant.util import dt as dt_util
 
 from . import TeslaBridgeConfigEntry
@@ -39,6 +42,7 @@ from .helpers import as_float, enum_state, hours_from_now, minutes_from_now
 from .models import EnergySiteData, VehicleData
 from .powerwall_local import LocalPowerwallData
 from .stream import VehicleStream
+from .usage import LABELS, STREAMING
 
 PARALLEL_UPDATES = 0
 
@@ -802,6 +806,90 @@ class BridgeSensor(BridgeAppEntity, SensorEntity):
         return self.entity_description.value_fn(self.coordinator.data or {})
 
 
+@dataclass(frozen=True, kw_only=True)
+class UsageSensorDescription(SensorEntityDescription):
+    """A value from this month's Fleet API usage summary (see usage.py)."""
+
+    value_fn: Callable[[dict[str, Any]], Any]
+    attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+
+
+USAGE_REFRESH = dt.timedelta(minutes=5)
+
+
+def _usage_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
+    return {
+        LABELS[category]: f"{count:,} (${summary['costs'][category]:.2f})"
+        for category, count in summary["counts"].items()
+    }
+
+
+USAGE_SENSORS: tuple[UsageSensorDescription, ...] = (
+    UsageSensorDescription(
+        key="api_cost_month",
+        value_fn=lambda s: round(s["total"], 2),
+        attrs_fn=_usage_breakdown,
+        native_unit_of_measurement="USD",
+        device_class=SensorDeviceClass.MONETARY,
+        suggested_display_precision=2,
+    ),
+    UsageSensorDescription(
+        key="api_cost_projected",
+        value_fn=lambda s: round(s["projected"], 2),
+        native_unit_of_measurement="USD",
+        device_class=SensorDeviceClass.MONETARY,
+        suggested_display_precision=2,
+    ),
+    UsageSensorDescription(
+        key="api_requests_month",
+        value_fn=lambda s: s["requests"],
+        attrs_fn=lambda s: {
+            LABELS[c]: n for c, n in s["counts"].items() if c != STREAMING
+        },
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
+
+class UsageSensor(SensorEntity):
+    """Tesla Bridge's own Fleet API use this month, priced at Tesla's rates."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    entity_description: UsageSensorDescription
+
+    def __init__(
+        self, entry: TeslaBridgeConfigEntry, description: UsageSensorDescription
+    ) -> None:
+        self.entity_description = description
+        self._data = entry.runtime_data
+        self._attr_unique_id = f"{entry.entry_id}-usage-{description.key}"
+        self._attr_translation_key = description.key
+        self._attr_device_info = entry.runtime_data.bridge.device
+        self._update()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self._data.usage.async_add_listener(self._refresh))
+        # Streamed values arrive constantly; their cost moves in cents per hour.
+        self.async_on_remove(
+            async_track_time_interval(self.hass, self._refresh, USAGE_REFRESH)
+        )
+
+    @callback
+    def _refresh(self, _now: dt.datetime | None = None) -> None:
+        self._update()
+        self.async_write_ha_state()
+
+    def _update(self) -> None:
+        summary = self._data.usage.summary(self._data.vehicles)
+        description = self.entity_description
+        self._attr_native_value = description.value_fn(summary)
+        if description.attrs_fn is not None:
+            self._attr_extra_state_attributes = description.attrs_fn(summary)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: TeslaBridgeConfigEntry,
@@ -829,4 +917,5 @@ async def async_setup_entry(
                     for description, value_fn in BATTERY_SENSORS
                 )
     entities.extend(BridgeSensor(entry, description) for description in BRIDGE_SENSORS)
+    entities.extend(UsageSensor(entry, description) for description in USAGE_SENSORS)
     async_add_entities(entities)

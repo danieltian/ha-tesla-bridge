@@ -395,6 +395,15 @@
           "transition_to_island": "Going off grid",
           "wait_for_user": "Waiting for user"
         }
+      },
+      "api_cost_month": {
+        "name": "Tesla API cost this month"
+      },
+      "api_cost_projected": {
+        "name": "Tesla API cost projected for this month"
+      },
+      "api_requests_month": {
+        "name": "Tesla API requests this month"
       }
     },
     "binary_sensor": {
@@ -774,6 +783,10 @@
     "domain_changed": {
       "title": "Tesla Bridge app uses a new DuckDNS name",
       "description": "The app now uses **{new}**, but Tesla Bridge is registered with Tesla for **{old}**, so your cars keep streaming to {old}. Open Tesla Bridge in Settings → Devices & services and choose **Reconfigure** → **Register the app's new DuckDNS name with Tesla**, or change the app's DuckDNS name back to {old}."
+    },
+    "api_budget": {
+      "title": "Tesla API use may run past the free $10 credit",
+      "description": "At its current rate, Tesla Bridge's use of Tesla's API comes to about **${projected}** this month (${spent} so far), mostly {top}. Above $10, Tesla turns off your developer app until next month and removes your cars' streaming setups; Tesla Bridge sends them again once Tesla allows it.\n\nTo use less, open Tesla Bridge in Settings → Devices & services, choose **Configure** and pick a lighter streaming preset. Your developer app's billing and usage page on developer.tesla.com shows what Tesla actually counted, including other integrations that use the same developer app."
     }
   }
 }

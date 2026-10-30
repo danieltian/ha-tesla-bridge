@@ -155,6 +155,7 @@ async def async_get_config_entry_diagnostics(
             "status": status,
         },
         "upnp": data.upnp.status.as_dict() if data.upnp else None,
+        "api_usage": data.usage.summary(data.vehicles),
         "vehicles": vehicles,
         "energy_sites": sites,
     }
